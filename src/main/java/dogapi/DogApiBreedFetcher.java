@@ -26,12 +26,15 @@ public class DogApiBreedFetcher implements BreedFetcher {
      * @throws BreedNotFoundException if the breed does not exist (or if the API call fails for any reason)
      */
     @Override
-    public List<String> getSubBreeds(String breed) {
+    public List<String> getSubBreeds(String breed) throws IOException, BreedNotFoundException {
         if (breed == null || breed.trim().isEmpty()) {
             throw new IllegalArgumentException("Breed cannot be null or empty.");
         }
 
-        String url = String.format("https://dog.ceo/api/breed/%s/list", breed.trim().toLowerCase());
+        final String url = String.format(
+                "https://dog.ceo/api/breed/%s/list",
+                breed.trim().toLowerCase()
+        );
 
         OkHttpClient client = new OkHttpClient();
 
@@ -41,37 +44,35 @@ public class DogApiBreedFetcher implements BreedFetcher {
                 .build();
 
         try (Response response = client.newCall(request).execute()) {
-
-            if (response.body() == null) {
-                throw new RuntimeException("No response body from Dog API");
+            if (!response.isSuccessful()) {
+                throw new IOException("HTTP error from Dog API: " + response.code());
             }
-
+            if (response.body() == null) {
+                throw new IOException("No response body from Dog API");
+            }
 
             String responseBody = response.body().string();
-
             JSONObject json = new JSONObject(responseBody);
 
-
             String status = json.optString("status", "");
-            if (!status.equalsIgnoreCase("success")) {
-                // If it’s not success, the API will usually include an error message
-                String message = json.optString("message", "Breed not found");
-                throw new IllegalArgumentException(message);
+            if (!"success".equalsIgnoreCase(status)) {
+                String apiMsg = json.optString("message", "Breed not found");
+                throw new BreedNotFoundException(apiMsg);
             }
 
-            JSONArray subBreedsArray = json.getJSONArray("message");
+            JSONArray subBreedsArray = json.optJSONArray("message");
+            if (subBreedsArray == null) {
+                return java.util.Collections.emptyList();
+            }
 
-            List<String> subBreeds = new ArrayList<>();
+            List<String> subBreeds = new ArrayList<>(subBreedsArray.length());
             for (int i = 0; i < subBreedsArray.length(); i++) {
-                subBreeds.add(subBreedsArray.getString(i));
+                subBreeds.add(subBreedsArray.optString(i, ""));
             }
-
             return subBreeds;
 
-        } catch (IOException e) {
-            throw new RuntimeException("Network error while contacting Dog API", e);
-        } catch (JSONException e) {
-            throw new RuntimeException("Error parsing Dog API response", e);
+        } catch (org.json.JSONException e) {
+            throw new IOException("Error parsing Dog API response", e);
         }
     }
 }

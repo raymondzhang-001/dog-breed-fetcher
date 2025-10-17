@@ -14,36 +14,39 @@ import java.util.*;
  * The cache maps the name of a breed to its list of sub breed names.
  */
 public class CachingBreedFetcher implements BreedFetcher {
-    private final BreedFetcher fetcher;           // the underlying fetcher (e.g. DogApiBreedFetcher)
-    private final Map<String, List<String>> cache; // stores breed → sub-breeds
-    private int callsMade = 0;                    // counts how many times we actually call the inner fetcher
+    private final BreedFetcher fetcher;
+    private final Map<String, List<String>> cache = new HashMap<>();
+    private int callsMade = 0;
 
     public CachingBreedFetcher(BreedFetcher fetcher) {
         this.fetcher = fetcher;
-        this.cache = new HashMap<>();
     }
 
     @Override
-    public List<String> getSubBreeds(String breed)
-            throws BreedNotFoundException {
+    public synchronized List<String> getSubBreeds(String breed)
+            throws IOException, BreedNotFoundException {
 
-        // Normalize breed name to lowercase (so "Bulldog" and "bulldog" count as same)
-        String key = breed.trim().toLowerCase();
-
-        // 1️⃣ Check cache first
-        if (cache.containsKey(key)) {
-            return cache.get(key); // return the stored result instantly
+        if (breed == null || breed.trim().isEmpty()) {
+            throw new IllegalArgumentException("Breed cannot be null or empty.");
         }
 
-        // 2️⃣ Otherwise, fetch from the real API and store it
-        callsMade++;
-        List<String> result = fetcher.getSubBreeds(key);
-        cache.put(key, result); // save the result so next time we skip the API call
+        // Use normalized string ONLY for the cache key
+        final String key = breed.trim().toLowerCase();
 
+        // Hit: return cached value, do NOT increment callsMade
+        if (cache.containsKey(key)) {
+            return cache.get(key);
+        }
+
+        // Miss: call the underlying fetcher using the ORIGINAL breed
+        callsMade++;
+        List<String> result = fetcher.getSubBreeds(breed);
+
+        // Store result under normalized key
+        cache.put(key, result);
         return result;
     }
 
-    /** Optional helper so tests can check how many actual API calls happened. */
     public int getCallsMade() {
         return callsMade;
     }
