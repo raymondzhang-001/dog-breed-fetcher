@@ -30,19 +30,15 @@ public class CachingBreedFetcher implements BreedFetcher {
             throw new IllegalArgumentException("Breed cannot be null or empty.");
         }
 
-        // Use normalized string ONLY for the cache key
         final String key = breed.trim().toLowerCase();
 
-        // Hit: return cached value, do NOT increment callsMade
         if (cache.containsKey(key)) {
             return cache.get(key);
         }
 
-        // Miss: call the underlying fetcher using the ORIGINAL breed
         callsMade++;
         List<String> result = fetcher.getSubBreeds(breed);
 
-        // Store result under normalized key
         cache.put(key, result);
         return result;
     }
