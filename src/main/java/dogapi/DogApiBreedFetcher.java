@@ -31,20 +31,16 @@ public class DogApiBreedFetcher implements BreedFetcher {
             throw new IllegalArgumentException("Breed cannot be null or empty.");
         }
 
-        String url = String.format("https://dog.ceo/api/breed/%s/list", breed.trim().toLowerCase());
+        final String url = String.format("https://dog.ceo/api/breed/%s/list", breed.trim().toLowerCase());
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url(url).get().build();
 
         try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new RuntimeException("HTTP error from Dog API: " + response.code());
-            }
-            if (response.body() == null) {
-                throw new RuntimeException("No response body from Dog API");
-            }
+            if (!response.isSuccessful()) throw new RuntimeException("HTTP error: " + response.code());
+            if (response.body() == null) throw new RuntimeException("Empty response body");
 
-            String responseBody = response.body().string();
-            JSONObject json = new JSONObject(responseBody);
+            String body = response.body().string();
+            JSONObject json = new JSONObject(body);
 
             String status = json.optString("status", "");
             if (!"success".equalsIgnoreCase(status)) {
@@ -60,9 +56,9 @@ public class DogApiBreedFetcher implements BreedFetcher {
             return out;
 
         } catch (org.json.JSONException e) {
-            throw new RuntimeException("Error parsing Dog API response", e);
+            throw new RuntimeException("JSON parse error", e);
         } catch (java.io.IOException e) {
-            throw new RuntimeException("Network error while contacting Dog API", e);
+            throw new RuntimeException("Network/IO error", e);
         }
     }
 }

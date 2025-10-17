@@ -24,25 +24,26 @@ public class CachingBreedFetcher implements BreedFetcher {
 
     @Override
     public synchronized List<String> getSubBreeds(String breed)
-            throws BreedNotFoundException {  // note: no IOException here
+            throws BreedNotFoundException {
 
         if (breed == null || breed.trim().isEmpty()) {
             throw new IllegalArgumentException("Breed cannot be null or empty.");
         }
 
         final String key = breed.trim().toLowerCase();
+
         if (cache.containsKey(key)) {
             return cache.get(key);
         }
 
         callsMade++;
-        try {
-            List<String> result = fetcher.getSubBreeds(breed);
-            cache.put(key, result);
-            return result;
-        } catch (IOException e) {
-            throw new RuntimeException("Network/IO error while fetching sub-breeds", e);
-        }
+        List<String> result = fetcher.getSubBreeds(breed);
+        cache.put(key, result);
+        return result;
+    }
+
+    public int getCallsMade() {
+        return callsMade;
     }
 }
 
