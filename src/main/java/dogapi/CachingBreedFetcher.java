@@ -37,12 +37,10 @@ public class CachingBreedFetcher implements BreedFetcher {
 
         callsMade++;
         try {
-            // delegate may throw IOException or BreedNotFoundException
             List<String> result = fetcher.getSubBreeds(breed);
             cache.put(key, result);
             return result;
         } catch (IOException e) {
-            // convert transport failure into unchecked so callers of the caching wrapper aren't forced to catch it
             throw new RuntimeException("Network/IO error while fetching sub-breeds", e);
         }
     }
